@@ -24,10 +24,16 @@ pip install -r requirements.txt
 
 2. Configure environment variables (examples):
 
+2. Configure environment variables (examples):
+
 ```bash
-export TIDAL_DL_BIN=/home/you/.local/bin/tidal-dl-ng   # path to tidal-dl binary
+export TIDAL_DL_BIN=tidal-dl-ng                        # path to tidal-dl binary (default: looks in PATH)
+export TEMPLATE_FOLDER=/path/to/templates              # optional: Flask template folder (default: app directory)
+export STATIC_FOLDER=/path/to/static                   # optional: Flask static folder (default: app directory)
+export FLASK_HOST=0.0.0.0                              # optional: bind address (default: 0.0.0.0)
+export FLASK_PORT=5050                                 # optional: port (default: 5050)
 export DOWNLOAD_TIMEOUT=0                              # seconds, 0 = no timeout
-export DOWNLOAD_TOKEN="your-strong-token-here"       # optional: require token on requests
+export DOWNLOAD_TOKEN="your-strong-token-here"         # optional: require token on requests
 ```
 
 3. Run the app (development):

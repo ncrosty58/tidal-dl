@@ -7,7 +7,11 @@ import logging
 from flask import Flask, render_template, request, Response, send_from_directory, abort
 from flask import Flask, Response, request
 
-app = Flask(__name__, template_folder='REDACTED', static_folder='REDACTED')
+# Configuration via environment
+TEMPLATE_FOLDER = os.environ.get('TEMPLATE_FOLDER', os.path.dirname(os.path.abspath(__file__)))
+STATIC_FOLDER = os.environ.get('STATIC_FOLDER', os.path.dirname(os.path.abspath(__file__)))
+
+app = Flask(__name__, template_folder=TEMPLATE_FOLDER, static_folder=STATIC_FOLDER)
 
 # Configure logging (info and error only)
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -209,4 +213,6 @@ def stream():
     )
 
 if __name__ == '__main__':
-    app.run(host='192.168.4.113', port=5050, debug=False)
+    host = os.environ.get('FLASK_HOST', '0.0.0.0')
+    port = int(os.environ.get('FLASK_PORT', '5050'))
+    app.run(host=host, port=port, debug=False)
