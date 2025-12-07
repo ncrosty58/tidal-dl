@@ -5,3 +5,5 @@ __pycache__/
 *.log
 downloads/
 .DS_Store
+nohup.out
+*.bak
