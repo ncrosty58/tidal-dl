@@ -10,8 +10,10 @@ services:
     # to be used for most settings, only set the env vars you explicitly want
     # to override here (leave others unset so they fall back to the TOML file).
     volumes:
-      # Map a repository/local config (read-only) into the container
-      - ./config.production.toml:/etc/tidal-dl/config.toml:ro
+      # Map the repository example config (read-only) into the container.
+      # Copy or rename `config.example.toml` to `config.toml` for production
+      # use, or edit the example in-place for quick testing.
+      - ./config.example.toml:/etc/tidal-dl/config.toml:ro
     environment:
       # We intentionally set only the runtime host/port here so the TOML file
       # can provide defaults for other settings like `TIDAL_DL_BIN` or
