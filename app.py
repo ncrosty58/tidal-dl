@@ -1,5 +1,6 @@
 import os
 import subprocess
+import shutil
 import time
 import threading
 import queue
@@ -28,7 +29,8 @@ current_process = None
 process_lock = threading.Lock()
 
 # Validate binary at startup (log warnings but do not crash)
-if not os.path.isfile(TIDAL_DL_BIN) or not os.access(TIDAL_DL_BIN, os.X_OK):
+_resolved_bin = shutil.which(TIDAL_DL_BIN)
+if not _resolved_bin:
     logging.warning(f"TIDAL_DL_BIN '{TIDAL_DL_BIN}' is not present or not executable. Please set env TIDAL_DL_BIN to a valid binary path.")
 
 @app.route('/')
