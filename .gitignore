@@ -7,3 +7,6 @@ downloads/
 .DS_Store
 nohup.out
 *.bak
+
+# Ignore VS Code workspace folder entirely (do not commit personal settings)
+.vscode/
