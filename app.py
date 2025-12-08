@@ -8,6 +8,7 @@ import logging
 from pathlib import Path
 from flask import Flask, render_template, request, Response, send_from_directory, abort
 from flask import Flask, Response, request
+from typing import cast
 
 # Optional TOML config support: prefer stdlib `tomllib` (Python 3.11+), fall back to `tomli` if available
 try:
@@ -113,7 +114,10 @@ def index_tidal():
 
 @app.route('/favicon.ico')
 def favicon():
-    return send_from_directory(app.static_folder, 'favicon.ico')
+    # `app.static_folder` can be typed as `Optional[str]` by type-checkers;
+    # cast to `str` here because we always provide a default static folder
+    # in `_load_config()` and want to satisfy the type checker.
+    return send_from_directory(cast(str, app.static_folder), 'favicon.ico')
 
 @app.route('/download', methods=['POST'])
 @app.route('/tidal-dl/download', methods=['POST'])
@@ -157,22 +161,26 @@ def download():
 
             # Read lines robustly
             try:
-                for line in iter(process.stdout.readline, ''):
-                    if line == '':
-                        break
-                    # best-effort non-blocking put: drop oldest if full
-                    try:
-                        output_queue.put(line, timeout=0.5)
-                    except queue.Full:
+                stdout = process.stdout
+                if stdout is None:
+                    logging.error("Process started without stdout capture")
+                else:
+                    for line in iter(stdout.readline, ''):
+                        if line == '':
+                            break
+                        # best-effort non-blocking put: drop oldest if full
                         try:
-                            _ = output_queue.get_nowait()
-                        except queue.Empty:
-                            pass
-                        try:
-                            output_queue.put_nowait(line)
+                            output_queue.put(line, timeout=0.5)
                         except queue.Full:
-                            # if still full, discard
-                            pass
+                            try:
+                                _ = output_queue.get_nowait()
+                            except queue.Empty:
+                                pass
+                            try:
+                                output_queue.put_nowait(line)
+                            except queue.Full:
+                                # if still full, discard
+                                pass
 
                 # Wait for completion (configurable)
                 if DOWNLOAD_TIMEOUT and DOWNLOAD_TIMEOUT > 0:

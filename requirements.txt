@@ -1,4 +1,4 @@
 Flask>=2.0
  
-# Optional: tomli for TOML parsing on Python < 3.11
-tomli ; python_version < '3.11'
+# Optional: tomli for TOML parsing on Python < 3.11 (pinned to the currently installed version)
+tomli==2.3.0 ; python_version < '3.11'
