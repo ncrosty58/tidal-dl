@@ -38,12 +38,58 @@ tidal-dl-ng dl "https://tidal.com/browse/track/12345678"
 
 Required for running the Flask web service.
 
+## Configuration
+
+The application supports multiple configuration methods (in order of precedence):
+
+1. **Environment variables** (highest precedence)
+2. **System TOML file**: `/etc/tidal-dl/config.toml` 
+3. **Local TOML file**: `config.toml` next to `app.py`
+4. **Built-in defaults** (lowest precedence)
+
+### TOML Configuration
+
+Create `/etc/tidal-dl/config.toml` for system-wide deployment:
+
+```toml
+# System configuration for tidal-dl
+template_folder = "/path/to/tidal-dl/templates"
+static_folder = "/path/to/tidal-dl/static"
+tidal_dl_bin = "/path/to/venv/bin/tidal-dl-ng"
+download_timeout = 0
+flask_host = "0.0.0.0"
+flask_port = 5050
+# Note: store secrets like download_token in /etc/default/tidal-dl instead
+```
+
+For secrets, create `/etc/default/tidal-dl` (restrict permissions):
+
+```bash
+# /etc/default/tidal-dl
+DOWNLOAD_TOKEN="your-secret-token"
+```
+
+See `config.example.toml` for all available options.
+
+### Environment Variables
+
+Alternatively, configure via environment variables:
+
+- `TIDAL_DL_BIN` - path to tidal-dl-ng binary
+- `TEMPLATE_FOLDER` - Flask template folder path
+- `STATIC_FOLDER` - Flask static folder path  
+- `FLASK_HOST` - bind address (default: 0.0.0.0)
+- `FLASK_PORT` - port (default: 5050)
+- `DOWNLOAD_TIMEOUT` - seconds, 0 = no timeout
+- `DOWNLOAD_TOKEN` - optional access token
+
 ## Features
 
 - Web UI to paste Tidal URLs and start downloads
 - Real-time streaming output via SSE
 - Stop running downloads
 - Optional token-based access control
+- TOML and environment variable configuration
 - Docker support
 
 ## Quick start (local)
@@ -54,18 +100,28 @@ Required for running the Flask web service.
 python3 -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
+pip install tidal-dl-ng  # Install tidal-dl-ng in the venv
 ```
 
-2. Configure environment variables (examples):
+2. Configure the application:
+
+**Option A: TOML config (recommended)**
+
+Copy the example and edit:
+```bash
+cp config.example.toml config.toml
+# Edit config.toml with your settings
+# Add config.toml to .gitignore if using for development
+```
+
+**Option B: Environment variables**
 
 ```bash
-export TIDAL_DL_BIN=tidal-dl-ng                        # path to tidal-dl binary (default: looks in PATH)
-export TEMPLATE_FOLDER=/path/to/templates              # optional: Flask template folder (default: app directory)
-export STATIC_FOLDER=/path/to/static                   # optional: Flask static folder (default: app directory)
-export FLASK_HOST=0.0.0.0                              # optional: bind address (default: 0.0.0.0)
-export FLASK_PORT=5050                                 # optional: port (default: 5050)
+export TIDAL_DL_BIN=venv/bin/tidal-dl-ng              # path to venv binary
+export FLASK_HOST=0.0.0.0                              # bind address
+export FLASK_PORT=5050                                 # port
 export DOWNLOAD_TIMEOUT=0                              # seconds, 0 = no timeout
-export DOWNLOAD_TOKEN="your-strong-token-here"         # optional: require token on requests
+export DOWNLOAD_TOKEN="your-strong-token-here"         # optional access token
 ```
 
 3. Run the app (development):
@@ -115,7 +171,7 @@ RUN pip install tidal-dl-ng
 
 ### Option 2: Systemd Service (Linux)
 
-1. Install dependencies system-wide or in a virtual environment:
+1. Install dependencies in a virtual environment:
 
 ```bash
 sudo mkdir -p /opt/tidal-dl-web
@@ -127,11 +183,34 @@ pip install -r requirements.txt
 pip install gunicorn tidal-dl-ng
 ```
 
-2. Create a systemd service file `/etc/systemd/system/tidal-dl-web.service`:
+2. Create system configuration:
+
+```bash
+# Create system config directory
+sudo mkdir -p /etc/tidal-dl
+
+# Create main config (edit paths as needed)
+sudo tee /etc/tidal-dl/config.toml > /dev/null <<'EOF'
+template_folder = "/opt/tidal-dl-web/templates"
+static_folder = "/opt/tidal-dl-web/static"
+tidal_dl_bin = "/opt/tidal-dl-web/venv/bin/tidal-dl-ng"
+download_timeout = 0
+flask_host = "127.0.0.1"
+flask_port = 5050
+EOF
+
+# Create secrets file (restrict permissions)
+sudo tee /etc/default/tidal-dl > /dev/null <<'EOF'
+DOWNLOAD_TOKEN="your-secret-token"
+EOF
+sudo chmod 600 /etc/default/tidal-dl
+```
+
+3. Create a systemd service file `/etc/systemd/system/tidal-dl.service`:
 
 ```ini
 [Unit]
-Description=Tidal-DL Web Service
+Description=TIDAL-DL Web Application
 After=network.target
 
 [Service]
@@ -139,11 +218,7 @@ Type=simple
 User=www-data
 Group=www-data
 WorkingDirectory=/opt/tidal-dl-web
-Environment="PATH=/opt/tidal-dl-web/venv/bin:/usr/local/bin:/usr/bin"
-Environment="TIDAL_DL_BIN=tidal-dl-ng"
-Environment="DOWNLOAD_TOKEN=your-secret-token"
-Environment="FLASK_HOST=127.0.0.1"
-Environment="FLASK_PORT=5050"
+EnvironmentFile=/etc/default/tidal-dl
 ExecStart=/opt/tidal-dl-web/venv/bin/gunicorn -w 1 -b 127.0.0.1:5050 app:app
 Restart=always
 RestartSec=5
@@ -152,13 +227,13 @@ RestartSec=5
 WantedBy=multi-user.target
 ```
 
-3. Enable and start:
+4. Enable and start:
 
 ```bash
 sudo systemctl daemon-reload
-sudo systemctl enable tidal-dl-web
-sudo systemctl start tidal-dl-web
-sudo systemctl status tidal-dl-web
+sudo systemctl enable tidal-dl
+sudo systemctl start tidal-dl
+sudo systemctl status tidal-dl
 ```
 
 ### Option 3: Nginx Reverse Proxy
