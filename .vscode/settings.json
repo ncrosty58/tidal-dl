@@ -1,5 +1,5 @@
 {
-  "python.defaultInterpreterPath": "/home/nathan/scripts/tidal-dl/venv/bin/python",
+  "python.defaultInterpreterPath": "./venv/bin/python",
   "python.analysis.extraPaths": [
     "${workspaceFolder}"
   ]
