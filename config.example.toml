@@ -1,5 +1,7 @@
 # Example configuration for tidal-dl
-# Place a copy at /etc/tidal-dl/config.toml or next to `app.py` as `config.toml`.
+# Place a copy at `/etc/tidal-dl/config.toml` for system-wide deployment.
+# Secrets (tokens) should be stored in `/etc/default/tidal-dl` and NOT committed to git.
+# For local development you can use a `config.toml` next to `app.py`, but add it to `.gitignore`.
 
 # Template and static folder paths (optional)
 template_folder = "./templates"
