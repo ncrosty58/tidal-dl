@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CosmosLab Tidal-DL</title>
     <link rel="icon" type="image/x-icon" href="/tidal-dl/favicon.ico">
+    <link rel="manifest" href="/static/manifest.json">
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         /* Custom scrollbar for dark mode */
@@ -67,6 +68,16 @@
             class="bg-gray-700 p-4 rounded-lg border border-gray-600 max-h-80 overflow-y-auto text-sm font-mono text-gray-200"
         ></div>
     </div>
+
+        <script>
+            if ('serviceWorker' in navigator) {
+                window.addEventListener('load', function() {
+                    navigator.serviceWorker.register('/static/service-worker.js').catch(function(err) {
+                        console.warn('Service worker registration failed:', err);
+                    });
+                });
+            }
+        </script>
 
     <script>
         let eventSource = null;
