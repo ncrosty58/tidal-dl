@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+# Wrapper to prefer a user-installed tidal-dl-ng binary or fall back to pipx.
+# Install to `/usr/local/bin/tidal-dl-pipx-wrapper` and make executable (`chmod +x`).
+
+set -euo pipefail
+
+# Prefer $HOME/.local/bin/tidal-dl-ng when present
+if [ -n "${HOME-}" ] && [ -x "${HOME}/.local/bin/tidal-dl-ng" ]; then
+  exec "${HOME}/.local/bin/tidal-dl-ng" "$@"
+fi
+
+# If tidal-dl-ng is in PATH, use it
+if command -v tidal-dl-ng >/dev/null 2>&1; then
+  exec tidal-dl-ng "$@"
+fi
+
+# As a last resort, attempt to use pipx to run the tool transiently
+if command -v pipx >/dev/null 2>&1; then
+  exec pipx run --spec tidal-dl-ng tidal-dl-ng -- "$@"
+fi
+
+echo "tidal-dl-ng not found; install via 'pipx install tidal-dl-ng' or place binary in ~/.local/bin" >&2
+exit 2

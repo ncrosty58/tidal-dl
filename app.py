@@ -5,22 +5,92 @@ import time
 import threading
 import queue
 import logging
+from pathlib import Path
 from flask import Flask, render_template, request, Response, send_from_directory, abort
 from flask import Flask, Response, request
 
-# Configuration via environment
-TEMPLATE_FOLDER = os.environ.get('TEMPLATE_FOLDER', os.path.dirname(os.path.abspath(__file__)))
-STATIC_FOLDER = os.environ.get('STATIC_FOLDER', os.path.dirname(os.path.abspath(__file__)))
+# Optional TOML config support: prefer stdlib `tomllib` (Python 3.11+), fall back to `tomli` if available
+try:
+    import tomllib as _toml
+except Exception:
+    try:
+        import tomli as _toml
+    except Exception:
+        _toml = None
+
+def _load_config():
+    """Load configuration from TOML and environment variables.
+
+    Order of precedence (highest first): environment variables -> /etc/tidal-dl/config.toml -> ./config.toml -> defaults
+    Supports keys: template_folder, static_folder, tidal_dl_bin, download_timeout, download_token, flask_host, flask_port
+    """
+    cfg = {}
+    if _toml is None:
+        logging.info("TOML support not available (no tomllib/tomli); skipping config file load")
+    else:
+        candidates = [Path('/etc/tidal-dl/config.toml'), Path(__file__).parent / 'config.toml']
+        for p in candidates:
+            try:
+                if p.exists():
+                    with p.open('rb') as fh:
+                        data = _toml.load(fh)
+                    # allow both a top-level table `tidal-dl` or flat keys
+                    if isinstance(data.get('tidal-dl'), dict):
+                        cfg.update(data.get('tidal-dl', {}))
+                    else:
+                        cfg.update(data)
+                    logging.info(f"Loaded config from {p}")
+                    break
+            except Exception as e:
+                logging.warning(f"Failed to read config {p}: {e}")
+
+    # defaults
+    default_dir = os.path.dirname(os.path.abspath(__file__))
+
+    def _env_or_cfg(name, cfg_key=None, default=None):
+        # environment takes precedence
+        v = os.environ.get(name)
+        if v is not None:
+            return v
+        key = (cfg_key or name).lower()
+        return cfg.get(key, default)
+
+    TEMPLATE_FOLDER = _env_or_cfg('TEMPLATE_FOLDER', 'template_folder', default_dir)
+    STATIC_FOLDER = _env_or_cfg('STATIC_FOLDER', 'static_folder', default_dir)
+    TIDAL_DL_BIN = _env_or_cfg('TIDAL_DL_BIN', 'tidal_dl_bin', 'tidal-dl-ng')
+    # download timeout may be int in TOML; ensure string/env handled
+    _dt = _env_or_cfg('DOWNLOAD_TIMEOUT', 'download_timeout', 0)
+    try:
+        DOWNLOAD_TIMEOUT = int(_dt)
+    except Exception:
+        DOWNLOAD_TIMEOUT = 0
+    DOWNLOAD_TOKEN = _env_or_cfg('DOWNLOAD_TOKEN', 'download_token', None)
+
+    # Return a dict of resolved values
+    return {
+        'TEMPLATE_FOLDER': TEMPLATE_FOLDER,
+        'STATIC_FOLDER': STATIC_FOLDER,
+        'TIDAL_DL_BIN': TIDAL_DL_BIN,
+        'DOWNLOAD_TIMEOUT': DOWNLOAD_TIMEOUT,
+        'DOWNLOAD_TOKEN': DOWNLOAD_TOKEN,
+    }
+
+
+# Resolve configuration (config file optional; environment variables override)
+_cfg = _load_config()
+
+TEMPLATE_FOLDER = _cfg['TEMPLATE_FOLDER']
+STATIC_FOLDER = _cfg['STATIC_FOLDER']
 
 app = Flask(__name__, template_folder=TEMPLATE_FOLDER, static_folder=STATIC_FOLDER)
 
 # Configure logging (info and error only)
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
-# Configuration via environment
-TIDAL_DL_BIN = os.environ.get('TIDAL_DL_BIN', 'tidal-dl-ng')
-DOWNLOAD_TIMEOUT = int(os.environ.get('DOWNLOAD_TIMEOUT', '0'))  # seconds; 0 = no timeout
-DOWNLOAD_TOKEN = os.environ.get('DOWNLOAD_TOKEN')  # optional: if set, require header X-Download-Token
+# Configuration values already resolved by _load_config
+TIDAL_DL_BIN = _cfg['TIDAL_DL_BIN']
+DOWNLOAD_TIMEOUT = _cfg['DOWNLOAD_TIMEOUT']  # seconds; 0 = no timeout
+DOWNLOAD_TOKEN = _cfg['DOWNLOAD_TOKEN']  # optional: if set, require header X-Download-Token
 
 # Store output in a bounded queue for streaming (prevents unbounded memory growth)
 output_queue = queue.Queue(maxsize=2000)

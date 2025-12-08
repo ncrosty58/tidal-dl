@@ -1,0 +1,19 @@
+# Example configuration for tidal-dl
+# Place a copy at /etc/tidal-dl/config.toml or next to `app.py` as `config.toml`.
+
+# Template and static folder paths (optional)
+template_folder = "./templates"
+static_folder = "./static"
+
+# Path to the tidal-dl-ng binary (default uses $PATH)
+tidal_dl_bin = "tidal-dl-ng"
+
+# Download timeout in seconds (0 = disabled)
+download_timeout = 0
+
+# Optional token to require for downloads (sent in header X-Download-Token)
+download_token = ""
+
+# Flask listen settings
+flask_host = "0.0.0.0"
+flask_port = 5050
